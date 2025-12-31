@@ -57,6 +57,11 @@ func CreateUser() gin.HandlerFunc {
 
 		user.VerficationToken = verificationToken
 
+		_, err = utils.SendVerificationEmail(user.Email, user.VerficationToken)
+		if err != nil {
+			fmt.Println("Error sending verification mail")
+		}
+
 		result, err := database.UserCollection.InsertOne(ctx, user)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error creating user", "details": err.Error()})
@@ -119,6 +124,11 @@ func Login() gin.HandlerFunc {
 		err := database.UserCollection.FindOne(ctx, bson.M{"email": userLogin.Email}).Decode(&user)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error getting user"})
+			return
+		}
+
+		if user.EmailVerified == false {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Email is not verified"})
 			return
 		}
 

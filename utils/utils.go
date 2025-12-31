@@ -4,9 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
@@ -122,13 +124,13 @@ func GenerateVerificationToken() (string, error) {
 }
 
 func SendVerificationEmail(email string, verificationToken string) (string, error) {
-	url := "http://localhost:3000/verify-email/" + verificationToken
+	url := "http://localhost:3000/verify-email?token=" + verificationToken
 	RESEND_API_KEY := os.Getenv("RESEND_API_KEY")
 
 	client := resend.NewClient(RESEND_API_KEY)
 
 	params := &resend.SendEmailRequest{
-		From: "Acme <onboarding@resend.dev>",
+		From: "Acme <noreply@mikaelsoninitiative.org>",
 		To:   []string{email},
 		Html: `<div style="max-width: 500px; margin: 0 auto; font-family: Arial, sans-serif; background-color: #ffffff; padding: 30px; border-radius: 8px; border: 1px solid #e5e7eb;">
   
@@ -178,4 +180,39 @@ func SendVerificationEmail(email string, verificationToken string) (string, erro
 	}
 	fmt.Println(sent.Id)
 	return sent.Id, nil
+}
+
+func GetAuthToken(c *gin.Context) (string, error) {
+	authHeader := c.Request.Header.Get("Authorization")
+
+	if authHeader == "" {
+		fmt.Println("There is no authorization token")
+		return "", fmt.Errorf("Authorization token not found")
+	}
+
+	authToken := strings.Split(authHeader, " ")[1]
+
+	return authToken, nil
+}
+
+func VerifyAuthToken(tokenString string) (*SignedDetails, error) {
+	claims := &SignedDetails{}
+
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(JWT_SECRET_KEY), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, err
+	}
+
+	if claims.ExpiresAt.Time.Before(time.Now()) {
+		return nil, errors.New("token has expired!")
+	}
+
+	return claims, nil
 }
