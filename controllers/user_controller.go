@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
+	"github.com/EsanSamuel/Reddit_Clone/jobs/workers"
 	"github.com/EsanSamuel/Reddit_Clone/models"
 	"github.com/EsanSamuel/Reddit_Clone/utils"
 	"github.com/gin-gonic/gin"
@@ -48,7 +49,7 @@ func CreateUser() gin.HandlerFunc {
 			return
 		}
 
-		verificationToken, err := utils.GenerateVerificationToken()
+		verificationToken, err := utils.GenerateVerificationOrResetToken()
 
 		if err != nil {
 			fmt.Println("Error generating verification token")
@@ -96,10 +97,14 @@ func VerifyEmail() gin.HandlerFunc {
 			}, "$unset": bson.M{"verification_token": ""},
 		}
 
-		_, err = database.UserCollection.UpdateOne(ctx, bson.M{"user_id": user.UserId}, updateData)
+		result, err := database.UserCollection.UpdateOne(ctx, bson.M{"user_id": user.UserId}, updateData)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error verfying user", "details": err.Error()})
 			return
+		}
+
+		if result.Acknowledged {
+			workers.SendEmailQueue(user.Email, user.UserId)
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "User verified"})
@@ -160,5 +165,90 @@ func Login() gin.HandlerFunc {
 			RefreshToken: refreshToken,
 		}})
 
+	}
+}
+
+func ResetPasswordRequest() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var resetUser models.ForgetPasswordRequestDTO
+
+		if err := c.ShouldBindJSON(&resetUser); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error binding forgot password payload", "details": err.Error()})
+			return
+		}
+
+		resetToken, err := utils.GenerateVerificationOrResetToken()
+		if err != nil {
+			fmt.Println("Error generating reset token")
+			return
+		}
+
+		var user models.User
+
+		err = database.UserCollection.FindOne(ctx, bson.M{"email": resetUser.Email}).Decode(&user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error getting user"})
+			return
+		}
+
+		updateData := bson.M{
+			"$set": bson.M{
+				"reset_token": resetToken,
+			},
+		}
+
+		_, err = database.UserCollection.UpdateOne(ctx, bson.M{"user_id": user.UserId}, updateData)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error generating reset token", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Reset token generated"})
+	}
+}
+
+func ResetPassword() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.Query("token")
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var reset models.ForgetPasswordDTO
+
+		if err := c.ShouldBindJSON(&reset); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error binding forgot password payload", "details": err.Error()})
+			return
+		}
+
+		var user models.User
+
+		filter := bson.M{"reset_token": token}
+
+		err := database.UserCollection.FindOne(ctx, filter).Decode(&user)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error getting user"})
+			return
+		}
+
+		hashedPassword, err := utils.HashPassword(reset.Password)
+
+		updateData := bson.M{
+			"$set": bson.M{
+				"password": hashedPassword,
+			}, "$unset": bson.M{
+				"reset_token": "",
+			},
+		}
+
+		_, err = database.UserCollection.UpdateOne(ctx, bson.M{"user_id": user.UserId}, updateData)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error updating user password", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"message": "Password updated!"})
 	}
 }

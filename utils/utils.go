@@ -112,7 +112,7 @@ func HashPassword(password string) (string, error) {
 	return string(hashPassword), nil
 }
 
-func GenerateVerificationToken() (string, error) {
+func GenerateVerificationOrResetToken() (string, error) {
 	b := make([]byte, 35)
 	_, err := rand.Read(b)
 	if err != nil {

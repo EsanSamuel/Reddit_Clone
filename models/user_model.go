@@ -44,3 +44,12 @@ type UserDTO struct {
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at" `
 }
+
+type ForgetPasswordRequestDTO struct {
+	Email      string `json:"email" bson:"email" validate:"required,email"`
+	ResetToken string `json:"reset_token" bson:"reset_token"`
+}
+
+type ForgetPasswordDTO struct {
+	Password string `json:"password" bson:"password" validate:"required,min=6"`
+}
