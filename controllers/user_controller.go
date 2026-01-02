@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
@@ -12,6 +15,7 @@ import (
 	"github.com/EsanSamuel/Reddit_Clone/utils"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -250,5 +254,124 @@ func ResetPassword() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, gin.H{"message": "Password updated!"})
+	}
+}
+
+func GetAllUsers() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var users []models.User
+
+		filter := bson.M{}
+		findOptions := options.Find()
+
+		// Search User
+		if s := strings.TrimSpace(c.Query("search")); s != "" {
+			safe := regexp.QuoteMeta(s)
+
+			filter = bson.M{
+				"$or": []bson.M{
+					{
+						"first_name": bson.M{
+							"$regex":   safe,
+							"$options": "i",
+						},
+					},
+					{
+						"last_name": bson.M{
+							"$regex":   safe,
+							"$options": "i",
+						},
+					},
+					{
+						"role": bson.M{
+							"$regex":   safe,
+							"$options": "i",
+						},
+					},
+				},
+			}
+		}
+
+		// Sort User
+		if sort := strings.TrimSpace(c.Query("sort")); sort != "" {
+			switch sort {
+			case "asc":
+				findOptions.SetSort(bson.D{{"created_at", 1}})
+			case "desc":
+				findOptions.SetSort(bson.D{{"created_at", -1}})
+			}
+
+		}
+
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		perPage := 9
+
+		findOptions.SetSkip((int64(page) - 1) * int64(perPage))
+		findOptions.SetLimit(int64(perPage))
+
+		cursor, err := database.UserCollection.Find(ctx, filter, findOptions)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching users", "details": err.Error()})
+			return
+		}
+
+		if err := cursor.All(ctx, &users); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error decoding users", "details": err.Error()})
+			return
+		}
+		defer cursor.Close(ctx)
+
+		c.JSON(http.StatusOK, users)
+	}
+}
+
+func GetUser() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		userId := c.Param("userId")
+
+		var user models.User
+
+		if userId == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "userId is not provided"})
+			return
+		}
+
+		filter := bson.M{"user_id": userId}
+
+		err := database.UserCollection.FindOne(ctx, filter).Decode(&user)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error fetching user", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, user)
+	}
+}
+
+func UploadFiles() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var _, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		form, err := c.MultipartForm()
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "error getting files", "details": err.Error()})
+			return
+		}
+
+		files := form.File["files"]
+
+		urls := utils.UploadFiles(c, files)
+
+		c.JSON(http.StatusCreated, urls)
 	}
 }

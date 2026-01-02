@@ -6,12 +6,17 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"strings"
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/resend/resend-go/v3"
@@ -191,6 +196,7 @@ func GetAuthToken(c *gin.Context) (string, error) {
 	}
 
 	authToken := strings.Split(authHeader, " ")[1]
+	fmt.Println("TokenString:", authToken)
 
 	return authToken, nil
 }
@@ -215,4 +221,63 @@ func VerifyAuthToken(tokenString string) (*SignedDetails, error) {
 	}
 
 	return claims, nil
+}
+
+func uploadToS3(file multipart.File, filename string, resultChan chan<- string) (string, error) {
+	defer file.Close()
+
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	bucketName := os.Getenv("AWS_BUCKET_NAME")
+	UPLOAD_URL := os.Getenv("UPLOAD_URL")
+	AWS_ENDPOINT := os.Getenv("AWS_ENDPOINT")
+	AWS_REGION := os.Getenv("AWS_REGION")
+
+	sess, err := session.NewSession(&aws.Config{
+		Region:   aws.String(AWS_REGION),
+		Endpoint: aws.String(AWS_ENDPOINT),
+		Credentials: credentials.NewStaticCredentials(
+			accessKey, secretKey, "",
+		),
+		S3ForcePathStyle: aws.Bool(true),
+	})
+	if err != nil {
+		return "", err
+	}
+
+	s3Client := s3.New(sess)
+	_, err = s3Client.PutObject(&s3.PutObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(filename),
+		Body:   file,
+		ACL:    aws.String("public-read"),
+	})
+
+	url := UPLOAD_URL + filename
+
+	resultChan <- url
+
+	return url, err
+}
+
+func UploadFiles(c *gin.Context, files []*multipart.FileHeader) []string {
+	result := make(chan string, len(files))
+
+	for _, file := range files {
+		src, err := file.Open()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "error opening file", "details": err.Error()})
+			continue
+		}
+		go uploadToS3(src, file.Filename, result)
+	}
+
+	var urls []string
+	for i := 0; i < len(files); i++ {
+		url := <-result
+		urls = append(urls, url)
+	}
+
+	fmt.Println("All uploaded urls:", urls)
+	return urls
 }

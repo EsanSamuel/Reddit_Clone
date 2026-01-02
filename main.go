@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	controllers "github.com/EsanSamuel/Reddit_Clone/controllers"
 	"github.com/EsanSamuel/Reddit_Clone/jobs/workers"
+	"github.com/EsanSamuel/Reddit_Clone/routes"
 	"github.com/gin-gonic/gin"
 )
 
@@ -20,11 +20,14 @@ func main() {
 	r.GET("/hello", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome to reddit_clone api"})
 	})
-	r.POST("/register", controllers.CreateUser())
-	r.PATCH("/verify-user", controllers.VerifyEmail())
-	r.POST("/login", controllers.Login())
-	r.PATCH("/reset-password-request", controllers.ResetPasswordRequest())
-	r.PATCH("/reset-password", controllers.ResetPassword())
+	routes.UnProtectedRoutes(r)
+	//routes.ProtectedRoutes(r)
+
+	go func() {
+		if err := r.Run(":8080"); err != nil {
+			fmt.Println("Error starting server")
+		}
+	}()
 
 	// This is needed to gracefully shutdown the application with ctrl^c
 	signalChan := make(chan os.Signal, 1)
@@ -32,10 +35,4 @@ func main() {
 	<-signalChan
 
 	workers.StopEmailWorker()
-
-	go func() {
-		if err := r.Run(":8080"); err != nil {
-			fmt.Println("Error starting server")
-		}
-	}()
 }

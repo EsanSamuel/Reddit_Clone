@@ -3,9 +3,6 @@ package workers
 import (
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/EsanSamuel/Reddit_Clone/jobs"
 	"github.com/gocraft/work"
@@ -46,12 +43,6 @@ func EmailWorker() {
 	worker.Job("send_welcome_email", (*jobs.Context).SendWelcomeEmail)
 
 	worker.Start()
-
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
-	<-signalChan
-
-	worker.Stop()
 }
 
 func StopEmailWorker() {
