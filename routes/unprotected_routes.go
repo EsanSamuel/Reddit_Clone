@@ -13,5 +13,9 @@ func UnProtectedRoutes(r *gin.Engine) {
 	r.PATCH("/reset-password-request", controllers.ResetPasswordRequest())
 	r.GET("/users", controllers.GetAllUsers())
 	r.GET("/users/:userId", controllers.GetUser())
-	r.POST("/upload", controllers.UploadFiles())
+	r.PATCH("/avatar/:userId", controllers.UploadAvatar())
+	r.POST("/subreddit", controllers.CreateSubreddit())
+	r.POST("/subreddit/member", controllers.JoinSubreddit())
+	r.POST("subreddit/moderator", controllers.AddModerators())
+	//r.POST("/upload", controllers.UploadFiles())
 }

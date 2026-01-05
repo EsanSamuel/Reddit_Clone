@@ -18,6 +18,8 @@ type User struct {
 	RefreshToken     string        `json:"refresh_token" bson:"refresh_token"`
 	VerficationToken string        `json:"verification_token" bson:"verification_token"`
 	EmailVerified    bool          `json:"email_verified" bson:"email_verified"`
+	Avatar           string        `json:"avatar" bson:"avatar"`
+	Karma            string        `json:"karma" bson:"karma"`
 	ResetToken       string        `json:"reset_token" bson:"reset_token"`
 	CreatedAt        time.Time     `json:"created_at" bson:"created_at"`
 	UpdatedAt        time.Time     `json:"updated_at" bson:"updated_at"`
@@ -52,4 +54,8 @@ type ForgetPasswordRequestDTO struct {
 
 type ForgetPasswordDTO struct {
 	Password string `json:"password" bson:"password" validate:"required,min=6"`
+}
+
+type UpdateAvatar struct {
+	Avatar string `json:"avatar" bson:"avatar"`
 }

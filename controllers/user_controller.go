@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -356,7 +357,7 @@ func GetUser() gin.HandlerFunc {
 	}
 }
 
-func UploadFiles() gin.HandlerFunc {
+/*func UploadFiles() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		var _, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
@@ -373,5 +374,42 @@ func UploadFiles() gin.HandlerFunc {
 		urls := utils.UploadFiles(c, files)
 
 		c.JSON(http.StatusCreated, urls)
+	}
+}*/
+
+func UploadAvatar() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		user_id := c.Param("userId")
+
+		file, err := c.FormFile("avatar")
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error uploading file", "details": err.Error()})
+			return
+		}
+
+		src, err := file.Open()
+		fileByte, err := io.ReadAll(src)
+
+		if !utils.IsFileImage(fileByte) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "file is not a image", "details": err.Error()})
+			return
+		}
+
+		AvatarUrl, err := utils.UploadSingleFileToS3(src, file.Filename)
+
+		updateAvatar := bson.M{
+			"$set": bson.M{
+				"avatar": AvatarUrl,
+			},
+		}
+
+		_, err = database.UserCollection.UpdateOne(ctx, bson.M{"user_id": user_id}, updateAvatar)
+
+		c.JSON(http.StatusOK, AvatarUrl)
+
 	}
 }
