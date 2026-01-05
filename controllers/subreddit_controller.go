@@ -2,13 +2,18 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
 	"github.com/EsanSamuel/Reddit_Clone/models"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 func CreateSubreddit() gin.HandlerFunc {
@@ -142,5 +147,184 @@ func AddModerators() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, member)
+	}
+}
+
+func GetSubReddit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var subreddits []models.SubReddit
+
+		filter := bson.M{}
+		findOptions := options.Find()
+
+		// Search Subreddit
+		if s := strings.TrimSpace(c.Query("search")); s != "" {
+			safe := regexp.QuoteMeta(s)
+			filter = bson.M{
+				"$or": []bson.M{
+					{
+						"name": bson.M{
+							"$regex":   safe,
+							"$options": "i",
+						},
+					},
+					{
+						"description": bson.M{
+							"$regex":   safe,
+							"$options": "i",
+						},
+					},
+				},
+			}
+		}
+
+		// Sort Subreddit
+		if sort := strings.TrimSpace(c.Query("sort")); sort != "" {
+			switch sort {
+			case "asc":
+				findOptions.SetSort(bson.D{{"created_at", 1}})
+			case "desc":
+				findOptions.SetSort(bson.D{{"created_at", -1}})
+			}
+
+		}
+
+		page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+		perPage := 9
+
+		findOptions.SetSkip((int64(page) - 1) * int64(perPage))
+		findOptions.SetLimit(int64(perPage))
+
+		cursor, err := database.SubredditCollection.Find(ctx, filter, findOptions)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error finding subreddits", "details": err.Error()})
+			return
+		}
+
+		defer cursor.Close(ctx)
+
+		if err := cursor.All(ctx, &subreddits); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error decoding subreddits", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, subreddits)
+
+	}
+}
+
+func GetSubRedditUserJoined() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		var memberships []models.SubRedditMembers
+		var subreddit []models.SubReddit
+
+		user_id := c.Param("user_id")
+
+		findOptions := options.Find()
+
+		// Sort Subreddit
+		if sort := strings.TrimSpace(c.Query("sort")); sort != "" {
+			switch sort {
+			case "asc":
+				findOptions.SetSort(bson.D{{"joined_at", 1}})
+			case "desc":
+				findOptions.SetSort(bson.D{{"joined_at", -1}})
+			}
+
+		}
+
+		cursor, err := database.MemberCollection.Find(ctx, bson.M{"user_id": user_id}, findOptions)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error finding member", "details": err.Error()})
+			return
+		}
+
+		defer cursor.Close(ctx)
+
+		if err := cursor.All(ctx, &memberships); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error decoding subreddits", "details": err.Error()})
+			return
+		}
+		fmt.Println("No of subreddit joined:", len(memberships))
+
+		var subredditUserJoined []string
+		for _, membership := range memberships {
+			fmt.Println("Subreddit ID: ", membership.SubRedditId)
+			subredditUserJoined = append(subredditUserJoined, membership.SubRedditId)
+		}
+		fmt.Println("No of subreddit joined:", len(subredditUserJoined))
+
+		for _, subredditId := range subredditUserJoined {
+			filter := bson.M{"subreddit_id": subredditId}
+			if s := strings.TrimSpace(c.Query("search")); s != "" {
+				safe := regexp.QuoteMeta(s)
+
+				filter["$and"] = []bson.M{
+					{
+						"user_id": user_id,
+					},
+					{
+						"$or": []bson.M{
+							{
+								"name": bson.M{
+									"$regex":   safe,
+									"$options": "i",
+								},
+							},
+							{
+								"description": bson.M{
+									"$regex":   safe,
+									"$options": "i",
+								},
+							},
+						},
+					},
+				}
+			}
+
+			result, err := database.SubredditCollection.Find(ctx, filter)
+
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error finding subreddit", "details": err.Error()})
+				return
+			}
+
+			defer result.Close(ctx)
+
+			if err := result.All(ctx, &subreddit); err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Error decoding subreddits", "details": err.Error()})
+				return
+			}
+			c.JSON(http.StatusOK, subreddit)
+		}
+	}
+}
+
+func GetSubRedditById() gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		subredditId := c.Param("id")
+
+		var subreddit models.SubReddit
+
+		err := database.SubredditCollection.FindOne(ctx, bson.M{"subreddit_id": subredditId}).Decode(&subreddit)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error finding subreddit", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, subreddit)
 	}
 }

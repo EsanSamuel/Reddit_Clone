@@ -17,5 +17,8 @@ func UnProtectedRoutes(r *gin.Engine) {
 	r.POST("/subreddit", controllers.CreateSubreddit())
 	r.POST("/subreddit/member", controllers.JoinSubreddit())
 	r.POST("subreddit/moderator", controllers.AddModerators())
+	r.GET("/subreddits", controllers.GetSubReddit())
+	r.GET("/subreddits/user/:user_id", controllers.GetSubRedditUserJoined())
+	r.GET("/subreddits/:id", controllers.GetSubRedditById())
 	//r.POST("/upload", controllers.UploadFiles())
 }
