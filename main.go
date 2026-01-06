@@ -16,6 +16,7 @@ func main() {
 	r := gin.Default()
 
 	go workers.EmailWorker()
+	go workers.AISummaryWorker()
 
 	r.GET("/hello", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome to reddit_clone api"})
@@ -35,4 +36,5 @@ func main() {
 	<-signalChan
 
 	workers.StopEmailWorker()
+	workers.StopAISummaryWorker()
 }

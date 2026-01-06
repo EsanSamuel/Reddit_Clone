@@ -23,6 +23,33 @@ func NewRedisPool(addr string) *redis.Pool {
 
 var redisPool *redis.Pool = NewRedisPool(":6379")
 
+func AISummaryQueue(postId string) {
+	var enqueuer = work.NewEnqueuer("ai_summaryQueue", redisPool)
+
+	_, err := enqueuer.Enqueue("send_ai_summary", work.Q{"post_id": postId})
+
+	if err != nil {
+		fmt.Println("Error queuing ai summary", err.Error())
+		log.Fatal(err)
+	}
+}
+
+func AISummaryWorker() {
+	worker := work.NewWorkerPool(jobs.Context{}, 10, "ai_summaryQueue", redisPool)
+
+	worker.Middleware((*jobs.Context).Log)
+	worker.Middleware((*jobs.Context).FindPost)
+
+	worker.Job("send_ai_summary", (*jobs.Context).SendAISummary)
+
+	worker.Start()
+}
+
+func StopAISummaryWorker() {
+	worker := work.NewWorkerPool(jobs.Context{}, 10, "ai_summaryQueue", redisPool)
+	worker.Stop()
+}
+
 func SendEmailQueue(email string, userId string) {
 	var enqueuer = work.NewEnqueuer("emailQueue", redisPool)
 

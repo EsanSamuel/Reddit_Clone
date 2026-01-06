@@ -223,7 +223,12 @@ func VerifyAuthToken(tokenString string) (*SignedDetails, error) {
 	return claims, nil
 }
 
-func uploadToS3(file multipart.File, filename string, resultChan chan<- string) (string, error) {
+type UploadResult struct {
+	Index int
+	URL   string
+}
+
+func uploadToS3(file multipart.File, filename string, index int, resultChan chan<- UploadResult) (string, error) {
 	defer file.Close()
 
 	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
@@ -255,27 +260,27 @@ func uploadToS3(file multipart.File, filename string, resultChan chan<- string) 
 
 	url := UPLOAD_URL + filename
 
-	resultChan <- url
+	resultChan <- UploadResult{Index: index, URL: url}
 
 	return url, err
 }
 
 func UploadFiles(c *gin.Context, files []*multipart.FileHeader) []string {
-	result := make(chan string, len(files))
+	result := make(chan UploadResult, len(files))
+	urls := make([]string, len(files))
 
-	for _, file := range files {
+	for index, file := range files {
 		src, err := file.Open()
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "error opening file", "details": err.Error()})
 			continue
 		}
-		go uploadToS3(src, file.Filename, result)
+		go uploadToS3(src, file.Filename, index, result)
 	}
 
-	var urls []string
 	for i := 0; i < len(files); i++ {
-		url := <-result
-		urls = append(urls, url)
+		res := <-result
+		urls[res.Index] = res.URL
 	}
 
 	fmt.Println("All uploaded urls:", urls)

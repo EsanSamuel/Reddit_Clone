@@ -310,7 +310,6 @@ func GetSubRedditUserJoined() gin.HandlerFunc {
 
 func GetSubRedditById() gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
 
@@ -326,5 +325,23 @@ func GetSubRedditById() gin.HandlerFunc {
 		}
 
 		c.JSON(http.StatusOK, subreddit)
+	}
+}
+
+func LeaveSubreddit() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
+		defer cancel()
+
+		user_id := c.Param("user_id")
+
+		_, err := database.MemberCollection.DeleteOne(ctx, bson.M{"user_id": user_id})
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error leaving subreddit", "details": err.Error()})
+			return
+		}
+
+		c.JSON(http.StatusOK, "you have successfully left this subreddit")
 	}
 }

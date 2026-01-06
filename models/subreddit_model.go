@@ -15,6 +15,7 @@ type SubReddit struct {
 	CreatedAt    time.Time     `json:"created_at" bson:"created_at"`
 	UpdatedAt    time.Time     `json:"updated_at" bson:"updated_at"`
 	MembersCount int           `json:"members_count" bson:"members_count"`
+	PostsCount   int           `json:"posts_count" bson:"posts_count"`
 }
 
 type SubRedditMembers struct {

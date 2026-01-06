@@ -58,3 +58,7 @@ func Collection(collectionName string) *mongo.Collection {
 var UserCollection *mongo.Collection = Collection("users")
 var SubredditCollection *mongo.Collection = Collection("subreddit")
 var MemberCollection *mongo.Collection = Collection("subreddit_members")
+var PostCollection *mongo.Collection = Collection("posts")
+var CommentCollection *mongo.Collection = Collection("comments")
+var PostUpVoteCollection *mongo.Collection = Collection("post_upvote")
+var PostDownVoteCollection *mongo.Collection = Collection("post_downvote")
