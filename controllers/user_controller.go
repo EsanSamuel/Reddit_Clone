@@ -160,6 +160,26 @@ func Login() gin.HandlerFunc {
 			return
 		}
 
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "access_token",
+			Value:    token,
+			Path:     "/",
+			MaxAge:   86400,
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteNoneMode,
+		})
+
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    refreshToken,
+			Path:     "/",
+			MaxAge:   604800,
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteNoneMode,
+		})
+
 		c.JSON(http.StatusOK, gin.H{"message": "Login successful", "User": models.UserDTO{
 			UserId:       user.UserId,
 			FirstName:    user.FirstName,
@@ -169,6 +189,46 @@ func Login() gin.HandlerFunc {
 			Token:        token,
 			RefreshToken: refreshToken,
 		}})
+
+	}
+}
+
+func LogoutHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var userLogout models.UserLogout
+
+		if err := c.ShouldBindJSON(&userLogout); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Error binding user logout payload", "details": err.Error()})
+			return
+		}
+
+		err := utils.UpdateTokens("", "", userLogout.UserId, c)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "error updating token"})
+			return
+		}
+
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "access_token",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteNoneMode,
+		})
+
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "refresh_token",
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			Secure:   true,
+			HttpOnly: true,
+			SameSite: http.SameSiteNoneMode,
+		})
+
+		c.JSON(http.StatusOK, gin.H{"message": "User logged out successfully"})
 
 	}
 }

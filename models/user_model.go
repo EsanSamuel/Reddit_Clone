@@ -47,6 +47,10 @@ type UserDTO struct {
 	UpdatedAt    time.Time `json:"updated_at" `
 }
 
+type UserLogout struct {
+	UserId string `json:"user_id"`
+}
+
 type ForgetPasswordRequestDTO struct {
 	Email      string `json:"email" bson:"email" validate:"required,email"`
 	ResetToken string `json:"reset_token" bson:"reset_token"`

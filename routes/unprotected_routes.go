@@ -9,6 +9,7 @@ func UnProtectedRoutes(r *gin.Engine) {
 	r.POST("/register", controllers.CreateUser())
 	r.PATCH("/verify-user", controllers.VerifyEmail())
 	r.POST("/login", controllers.Login())
+	r.POST("/logout", controllers.LogoutHandler())
 	r.PATCH("/reset-password", controllers.ResetPassword())
 	r.PATCH("/reset-password-request", controllers.ResetPasswordRequest())
 	r.GET("/users", controllers.GetAllUsers())
