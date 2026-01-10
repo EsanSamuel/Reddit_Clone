@@ -76,3 +76,30 @@ func StopEmailWorker() {
 	worker := work.NewWorkerPool(jobs.Context{}, 10, "emailQueue", redisPool)
 	worker.Stop()
 }
+
+func AIEmbeddingQueue(postId string) {
+	var enqueuer = work.NewEnqueuer("ai_embeddings_queue", redisPool)
+
+	_, err := enqueuer.Enqueue("generate_ai_embeddings", work.Q{"post_id": postId})
+
+	if err != nil {
+		fmt.Println("Error queuing ai embedding", err.Error())
+		log.Fatal(err)
+	}
+}
+
+func AIEmbeddingWorker() {
+	worker := work.NewWorkerPool(jobs.Context{}, 10, "ai_embeddings_queue", redisPool)
+
+	worker.Middleware((*jobs.Context).Log)
+	worker.Middleware((*jobs.Context).FindPost)
+
+	worker.Job("generate_ai_embeddings", (*jobs.Context).GeneratePostEmbeddings)
+
+	worker.Start()
+}
+
+func StopAIEmbeddingWorker() {
+	worker := work.NewWorkerPool(jobs.Context{}, 10, "ai_embeddings_queue", redisPool)
+	worker.Stop()
+}

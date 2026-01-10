@@ -20,6 +20,7 @@ type Post struct {
 	CommentCount int           `json:"comment_count" bson:"comment_count"`
 	UpVote       int           `json:"up_vote" bson:"up_vote"`
 	DownVote     int           `json:"down_vote" bson:"down_vote"`
+	Embeddings   []float32     `json:"embeddings" bson:"embeddings"`
 
 	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`

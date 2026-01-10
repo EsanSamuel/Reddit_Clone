@@ -17,6 +17,7 @@ func main() {
 
 	go workers.EmailWorker()
 	go workers.AISummaryWorker()
+	go workers.AIEmbeddingWorker()
 
 	r.GET("/hello", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "Welcome to reddit_clone api"})
@@ -37,4 +38,5 @@ func main() {
 
 	workers.StopEmailWorker()
 	workers.StopAISummaryWorker()
+	workers.StopAIEmbeddingWorker()
 }

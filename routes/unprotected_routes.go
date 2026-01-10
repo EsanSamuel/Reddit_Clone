@@ -33,5 +33,6 @@ func UnProtectedRoutes(r *gin.Engine) {
 	r.POST("/post/upvote", controllers.UpVotePost())
 	r.POST("/post/downvote", controllers.DownVotePost())
 	r.GET("/summary/:post_id", controllers.ThreadsSummary())
+	r.POST("/rag/:postId", controllers.SeachPostDetailsWithAI())
 	//r.POST("/upload", controllers.UploadFiles())
 }

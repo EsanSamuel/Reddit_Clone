@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/config"
@@ -152,5 +153,55 @@ Comments: %s
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+	return nil
+}
+
+func (c *Context) GeneratePostEmbeddings(job *work.Job) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Second)
+	defer cancel()
+
+	postId := c.PostId
+
+	var post models.Post
+	var comments []models.Comment
+
+	if err := database.PostCollection.FindOne(ctx, bson.M{"post_id": postId}).Decode(&post); err != nil {
+		return err
+	}
+
+	cursor, err := database.CommentCollection.Find(ctx, bson.M{"post_id": postId})
+	if err != nil {
+		return err
+	}
+	defer cursor.Close(ctx)
+
+	if err := cursor.All(ctx, &comments); err != nil {
+		return err
+	}
+
+	var commentTexts []string
+	for _, c := range comments {
+		commentTexts = append(commentTexts, c.Content)
+	}
+
+	embeddingContent := post.Title + "\n" + post.Content
+	if len(commentTexts) > 0 {
+		embeddingContent += "\n" + strings.Join(commentTexts, "\n")
+	}
+
+	fmt.Println(embeddingContent)
+
+	embeddings := config.AIEmbeddings(embeddingContent)
+	//fmt.Println(embeddings)
+
+	_, err = database.PostCollection.UpdateOne(
+		ctx,
+		bson.M{"post_id": postId},
+		bson.M{"$set": bson.M{"embeddings": embeddings}},
+	)
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	return nil
 }

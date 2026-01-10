@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
+	"github.com/EsanSamuel/Reddit_Clone/jobs/workers"
 	"github.com/EsanSamuel/Reddit_Clone/models"
 	"github.com/EsanSamuel/Reddit_Clone/utils"
 	"github.com/gin-gonic/gin"
@@ -72,6 +73,7 @@ func CreatePost() gin.HandlerFunc {
 				bson.M{"subreddit_id": post.SubredditID},
 				bson.M{"$inc": bson.M{"posts_count": 1}},
 			)
+			workers.AIEmbeddingQueue(post.PostID)
 		}
 
 		c.JSON(http.StatusCreated, gin.H{
@@ -271,8 +273,7 @@ func GetPostById() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error finding post", "details": err.Error()})
 			return
 		}
-
-		c.JSON(http.StatusOK, post)
+		c.JSON(http.StatusOK, gin.H{"embeddings": post.Embeddings})
 	}
 }
 
