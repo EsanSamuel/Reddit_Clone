@@ -63,5 +63,6 @@ func AIEmbeddings(content string) []float32 {
 		log.Fatal(err)
 	}
 	//fmt.Println(string(embeddings))
+
 	return result.Embeddings[0].Values
 }
