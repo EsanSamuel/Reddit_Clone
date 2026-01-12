@@ -31,6 +31,7 @@ require (
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/mbndr/figlet4go v0.0.0-20190224160619-d6cef5b186ea // indirect
 	github.com/redis/go-redis/v9 v9.17.2 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.64.0 // indirect
