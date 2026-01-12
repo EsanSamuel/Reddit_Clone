@@ -108,7 +108,7 @@ func SeachPostDetailsWithAI() gin.HandlerFunc {
 				}
 				scores, answer := helpers.ProcessChunks(allChunks, queryEmbeddings, query)
 
-				c.JSON(http.StatusOK, gin.H{"scores": scores, "Answer redis": answer})
+				c.JSON(http.StatusOK, gin.H{"scores": scores, "Answer": answer})
 			} else {
 
 				var post models.Post
