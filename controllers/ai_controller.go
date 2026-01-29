@@ -18,6 +18,7 @@ import (
 )
 
 var redisClient = config.Redis
+var logger = config.InitLogger()
 
 func ThreadsSummary() gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -67,6 +68,9 @@ func ThreadsSummary() gin.HandlerFunc {
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error summarizing posts", "details": err.Error()})
 		}
+
+		logger.INFO(summary)
+		logger.DEBUG("Debug detail")
 		c.JSON(http.StatusOK, summary)
 	}
 
@@ -90,7 +94,7 @@ func SeachPostDetailsWithAI() gin.HandlerFunc {
 			data, err := cmd.Bytes()
 			if err != nil {
 				if err == redis.Nil {
-					fmt.Println("No chunks in Redis, continuing normal logic...")
+					log.Println("No chunks in Redis, continuing normal logic...")
 				} else {
 					log.Println("Redis error:", err)
 					return
@@ -107,7 +111,7 @@ func SeachPostDetailsWithAI() gin.HandlerFunc {
 
 				}
 				scores, answer := helpers.ProcessChunks(allChunks, queryEmbeddings, query)
-
+				logger.INFO(answer)
 				c.JSON(http.StatusOK, gin.H{"scores": scores, "Answer": answer})
 			} else {
 
@@ -157,6 +161,7 @@ func SeachPostDetailsWithAI() gin.HandlerFunc {
 					fmt.Println("Error storing chunks in redis", err)
 				}
 
+				logger.INFO(answer)
 				c.JSON(http.StatusOK, gin.H{"scores": scores, "Answer": answer})
 			}
 

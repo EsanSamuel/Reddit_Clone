@@ -253,6 +253,10 @@ func GetTagPosts() gin.HandlerFunc {
 				}
 			}
 		}
+		logger.INFO(response)
+		logger.ERROR("Tags not found!")
+		logger.WARN("Tags mssing ID")
+		//logger.FATAL("Internal server error")
 		c.JSON(http.StatusOK, response)
 
 	}

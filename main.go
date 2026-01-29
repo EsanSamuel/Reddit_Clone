@@ -7,14 +7,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/EsanSamuel/Reddit_Clone/jobs/cron"
 	"github.com/EsanSamuel/Reddit_Clone/jobs/workers"
 	"github.com/EsanSamuel/Reddit_Clone/routes"
+
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	r := gin.Default()
+	//config.InitLogger()
 
 	go workers.EmailWorker()
 	go workers.AISummaryWorker()
@@ -25,7 +26,7 @@ func main() {
 	})
 	routes.UnProtectedRoutes(r)
 	//routes.ProtectedRoutes(r)
-	cron.CronJob()
+	//cron.CronJob()
 
 	go func() {
 		if err := r.Run(":8080"); err != nil {

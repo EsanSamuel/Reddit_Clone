@@ -3,6 +3,7 @@ package cron
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/EsanSamuel/Reddit_Clone/database"
@@ -16,8 +17,8 @@ func CronJob() {
 	c := cron.New(cron.WithSeconds())
 	defer c.Stop()
 
-	_, err := c.AddFunc("* * * * * *", func() {
-		fmt.Println("Cron job ran at ", time.Now().Format("15:04:05"))
+	_, err := c.AddFunc("@daily", func() {
+		log.Println("Cron job ran at ", time.Now().Format("15:04:05"))
 
 		var ctx, cancel = context.WithTimeout(context.Background(), 100*time.Second)
 		defer cancel()
